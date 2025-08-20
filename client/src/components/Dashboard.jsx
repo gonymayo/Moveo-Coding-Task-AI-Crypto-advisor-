@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { UserContext } from "../context/UserContext";
 import { api } from "../api";
-import "../styles/Dashboard.css";
+import "../styles/dashboard.css";
 
 export default function Dashboard() {
   const { user } = useContext(UserContext);
