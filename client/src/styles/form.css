@@ -1,0 +1,125 @@
+/* ===== Container ===== */
+.page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0b0f14, #1a2230);
+  padding: 20px;
+}
+
+/* ===== Card ===== */
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: #11161d;
+  border: 1px solid #1e2731;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  padding: 28px 24px;
+  color: #e8eef5;
+}
+
+.card .header {
+  margin-bottom: 18px;
+  text-align: center;
+}
+
+.card .title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.card .subtitle {
+  font-size: 14px;
+  color: #a7b4c3;
+  margin: 6px 0 0 0;
+}
+
+/* ===== Form ===== */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+label {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #e8eef5;
+}
+
+.input, select, textarea {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #2a3543;
+  background: #0f151c;
+  color: #fff;
+  font-size: 14px;
+  transition: border .2s, box-shadow .2s;
+}
+
+.input:focus, select:focus, textarea:focus {
+  border-color: #6aa4ff;
+  box-shadow: 0 0 0 3px rgba(106,164,255,.3);
+  outline: none;
+}
+
+.error {
+  color: #ff4d4f;
+  font-size: 13px;
+  margin-top: -6px;
+}
+
+/* ===== Buttons ===== */
+.primary, button {
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  background: #0a69dc;
+  color: white;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background .2s, transform .08s;
+}
+
+.primary:hover, button:hover {
+  background: #1d82f0;
+}
+
+.primary:active, button:active {
+  transform: translateY(1px);
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid #2a3543;
+  color: #e8eef5;
+}
+
+.btn-ghost:hover {
+  background: #1a2230;
+}
+
+/* ===== Footer ===== */
+.footer {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 13px;
+  color: #a7b4c3;
+}
+
+.footer a {
+  color: #6aa4ff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
