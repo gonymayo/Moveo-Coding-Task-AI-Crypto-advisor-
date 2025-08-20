@@ -14,7 +14,6 @@ export default function Dashboard() {
   });
   const setFB = (key, val) => setFeedback((p) => ({ ...p, [key]: val }));
 
-  // ===== Prices =====
   const [prices, setPrices] = useState({ data: null, loading: true, error: "" });
   const fetchPrices = async () => {
     try {
@@ -26,7 +25,6 @@ export default function Dashboard() {
     }
   };
 
-  // ===== News =====
   const [news, setNews] = useState({ items: [], loading: true, error: "" });
   const fetchNews = async () => {
     try {
@@ -38,7 +36,6 @@ export default function Dashboard() {
     }
   };
 
-  // ===== Insight =====
   const [insight, setInsight] = useState({ text: "", loading: true, error: "" });
   const fetchInsight = async () => {
     try {
@@ -50,7 +47,6 @@ export default function Dashboard() {
     }
   };
 
-  // ===== Meme =====
   const [meme, setMeme] = useState({ title: "", url: "", loading: true, error: "" });
   const fetchMeme = async () => {
     try {
@@ -67,23 +63,20 @@ export default function Dashboard() {
     }
   };
 
-  // ===== Votes (👍/👎) =====
   const vote = async (section, value) => {
     try {
-      await api.vote(section, value); // value: 1 או -1
+      await api.vote(section, value); 
       setFB(section, value === 1 ? "up" : "down");
     } catch (err) {
       console.error("vote failed", err);
     }
   };
 
-  // ===== Load on mount =====
   useEffect(() => {
     fetchPrices();
     fetchNews();
     fetchInsight();
     fetchMeme();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const formatUSD = (n) =>

@@ -1,4 +1,3 @@
-// client/src/pages/Login.jsx
 import { useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../context/UserContext";
@@ -31,7 +30,7 @@ export default function Login() {
       }
 
       localStorage.setItem("token", data.token);
-      const applyUser = updateUser || setUser; // תומך בשתי האפשרויות
+      const applyUser = updateUser || setUser; 
       if (applyUser) applyUser(data.user);
 
       const hasPrefs = Boolean(data.user?.investorType || data.user?.contentType);

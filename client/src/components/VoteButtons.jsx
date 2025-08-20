@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 export default function VoteButtons({ section }) {
-  const [vote, setVote] = useState(0); // 0 = אין הצבעה, 1 = up, -1 = down
+  const [vote, setVote] = useState(0); 
 
   const handleVote = async (val) => {
     setVote(val);

@@ -1,4 +1,3 @@
-// client/src/context/UserContext.jsx
 import { createContext, useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 
@@ -11,7 +10,7 @@ export function UserProvider({ children }) {
   const setUserPatch = (patch) =>
     setUser((prev) => ({ ...(prev || {}), ...patch }));
 
-  const updateUser = (u) => setUser(u); // ⭐ הוספתי את זה
+  const updateUser = (u) => setUser(u); 
 
   const loadMe = useCallback(async () => {
     const token = localStorage.getItem("token");
