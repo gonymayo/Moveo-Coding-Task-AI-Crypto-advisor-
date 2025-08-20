@@ -47,7 +47,6 @@ They can also give feedback that is stored for future model improvements.
    └─ package.json
 
 
-
    
    
 ## Tech Stack
