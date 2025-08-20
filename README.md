@@ -27,3 +27,34 @@ cd Moveo-Coding-Task-AI-Crypto-advisor-
 npm install
 npm run dev        # frontend
 cd server && node index.js   # backend
+
+
+## Architecture & Folder Structure
+├─ client                   
+│  ├─ public
+│  │  └─ memes                
+│  ├─ src
+│  │  ├─ components
+│  │  │  └─ VoteButtons.jsx
+│  │  ├─ context
+│  │  │  └─ UserContext.jsx
+│  │  ├─ styles
+│  │  │  ├─ Dashboard.css
+│  │  │  └─ form.css
+│  │  ├─ App.jsx
+│  │  ├─ App.css
+│  │  ├─ Dashboard.jsx
+│  │  ├─ Login.jsx
+│  │  ├─ Register.jsx
+│  │  ├─ Onboarding.jsx
+│  │  ├─ ProtectedRoute.jsx
+│  │  ├─ main.jsx
+│  │  └─ index.css
+│  └─ index.html
+│
+└─ server/                    
+   ├─ index.js                  
+   ├─ coingecko.js            
+   └─ .env
+
+                     
