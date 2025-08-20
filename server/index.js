@@ -11,12 +11,18 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
-const FRONTEND_ORIGIN = "http://localhost:5173"; // Vite dev
+const FRONTEND_ORIGIN =
+  process.env.CORS_ORIGIN || "http://localhost:5173";
+
+app.use(cors({
+  origin: FRONTEND_ORIGIN,
+  credentials: true
+}));
+
 
 app.use(cors({ origin: FRONTEND_ORIGIN }));
 app.use(express.json());
 
-// ---------- DB ----------
 const db = new sqlite3.Database("./mydb.sqlite", (err) =>
   console.log(err ? "❌ SQLite error: " + err.message : "✅ SQLite ready")
 );
