@@ -7,7 +7,7 @@ export default function ProtectedRoute({ children }) {
   const { user, loadingUser } = useContext(UserContext);
   const token = localStorage.getItem("token");
 
-  if (loadingUser) return null; // אפשר לשים ספינר קל
+  if (loadingUser) return null; // אפשר לשים ספינר כאן
 
   if (!token || !user) return <Navigate to="/login" replace />;
 

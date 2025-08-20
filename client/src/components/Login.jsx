@@ -1,28 +1,45 @@
+// client/src/pages/Login.jsx
 import { useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../context/UserContext";
-import { api } from "../api";
 import "../styles/form.css";
 
 export default function Login() {
-  const { setUser } = useContext(UserContext);
+  const { setUser, updateUser } = useContext(UserContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const submit = async (e) => {
     e.preventDefault();
     setErr("");
+    setLoading(true);
     try {
-      const data = await api.login(email, password);
-      localStorage.setItem("token", data.token);
-      setUser(data.user);
+      const r = await fetch("http://localhost:4000/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
 
-      const hasPrefs = data.user?.investorType || data.user?.contentType;
+      const data = await r.json();
+      if (!r.ok) {
+        setErr(data?.error || "Login failed");
+        setLoading(false);
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      const applyUser = updateUser || setUser; // תומך בשתי האפשרויות
+      if (applyUser) applyUser(data.user);
+
+      const hasPrefs = Boolean(data.user?.investorType || data.user?.contentType);
       navigate(hasPrefs ? "/dashboard" : "/onboarding");
-    } catch (e) {
-      setErr(e.message || "Network error");
+    } catch {
+      setErr("Network error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -44,6 +61,7 @@ export default function Login() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               required
+              disabled={loading}
             />
           </div>
 
@@ -56,12 +74,15 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
+              disabled={loading}
             />
           </div>
 
           {err && <div className="error">{err}</div>}
 
-          <button className="primary" type="submit">Login</button>
+          <button className="primary" type="submit" disabled={loading}>
+            {loading ? "Logging in..." : "Login"}
+          </button>
         </form>
 
         <div className="footer">

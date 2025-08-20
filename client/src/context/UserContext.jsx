@@ -1,3 +1,4 @@
+// client/src/context/UserContext.jsx
 import { createContext, useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 
@@ -7,7 +8,10 @@ export function UserProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
 
-  const setUserPatch = (patch) => setUser((prev) => ({ ...(prev || {}), ...patch }));
+  const setUserPatch = (patch) =>
+    setUser((prev) => ({ ...(prev || {}), ...patch }));
+
+  const updateUser = (u) => setUser(u); // ⭐ הוספתי את זה
 
   const loadMe = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -30,10 +34,14 @@ export function UserProvider({ children }) {
     }
   }, []);
 
-  useEffect(() => { loadMe(); }, [loadMe]);
+  useEffect(() => {
+    loadMe();
+  }, [loadMe]);
 
   return (
-    <UserContext.Provider value={{ user, setUser, setUserPatch, loadMe, loadingUser }}>
+    <UserContext.Provider
+      value={{ user, setUser, updateUser, setUserPatch, loadMe, loadingUser }}
+    >
       {children}
     </UserContext.Provider>
   );
