@@ -1,9 +1,7 @@
-// server/coingecko.js
 import fetch from "node-fetch";
 
 const API_BASE = "https://api.coingecko.com/api/v3";
 
-// פונקציה כללית לשליפת נתונים מה־API
 async function fetchFromCoinGecko(endpoint) {
   try {
     const res = await fetch(`${API_BASE}${endpoint}`);
@@ -17,14 +15,12 @@ async function fetchFromCoinGecko(endpoint) {
   }
 }
 
-// דוגמה: שליפת מחירי ביטקוין ואתריום
 export async function getCoinPrices() {
   return await fetchFromCoinGecko(
     "/simple/price?ids=bitcoin,ethereum&vs_currencies=usd"
   );
 }
 
-// דוגמה: שליפת חדשות/טרנדים בשוק
 export async function getMarketTrends() {
   return await fetchFromCoinGecko("/search/trending");
 }

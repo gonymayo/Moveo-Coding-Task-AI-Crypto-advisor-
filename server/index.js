@@ -122,15 +122,33 @@ app.get("/api/prices", async (_req, res) => {
 app.get("/api/news", async (_req, res) => {
   const key = process.env.CRYPTOPANIC_KEY || "";
   try {
-    const r = await fetch(`https://cryptopanic.com/api/v1/posts/?auth_token=${key}&currencies=BTC,ETH,SOL&public=true`);
+    const url = key
+      ? `https://cryptopanic.com/api/v1/posts/?auth_token=${key}&currencies=BTC,ETH,SOL&public=true`
+      : `https://cryptopanic.com/api/v1/posts/?public=true`; // אם אין מפתח—ננסה פומבי
+
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("news fetch failed");
     const j = await r.json();
-    res.json({ items: (j.results || []).map(p => ({
-      id: p.id, title: p.title, url: p.url, source: p.source?.title || "News", published_at: p.published_at
-    }))});
+    const items = (j.results || []).map(p => ({
+      id: p.id,
+      title: p.title,
+      url: p.url,
+      source: p.source?.title || "News",
+      published_at: p.published_at
+    }));
+    if (!items.length) throw new Error("no items");
+    return res.json({ items });
   } catch {
-    res.json({ items: [{ id:"static", title:"Here is some news about the crypto market...", url:"#", source:"Fallback", published_at:new Date().toISOString() }]});
+    return res.json({
+      items: [
+        { id: "cd", title: "Latest crypto headlines", url: "https://www.coindesk.com/", source: "CoinDesk", published_at: new Date().toISOString() },
+        { id: "ct", title: "Top stories today",      url: "https://cointelegraph.com/", source: "CoinTelegraph", published_at: new Date().toISOString() },
+        { id: "cp", title: "CryptoPanic aggregator", url: "https://cryptopanic.com/",   source: "CryptoPanic",   published_at: new Date().toISOString() }
+      ]
+    });
   }
 });
+
 
 app.get("/api/insight", (req, res) => {
   const userId = getUserIdFromAuth(req);
@@ -146,7 +164,6 @@ app.get("/api/insight", (req, res) => {
   });
 });
 
-// ממים מקומיים מתוך client/public/memes/ (ללא כותרת)
 const MEMES = [
   { url: "/memes/meme1.jpg" },
   { url: "/memes/meme2.jpg" },
@@ -155,7 +172,6 @@ const MEMES = [
 ];
 app.get("/api/meme", (_req, res) => res.json(MEMES[Math.floor(Math.random()*MEMES.length)]));
 
-// ---------- Votes ----------
 app.post("/api/vote", (req, res) => {
   const { section, value } = req.body || {};
   if (!["news","prices","aiInsight","meme"].includes(section))
@@ -163,7 +179,7 @@ app.post("/api/vote", (req, res) => {
   if (![1,-1].includes(value))
     return res.status(400).json({ error: "Invalid value" });
 
-  const userId = getUserIdFromAuth(req); // יכול להיות null אם לא נשלח טוקן
+  const userId = getUserIdFromAuth(req); 
   db.run("INSERT INTO votes(userId, section, value) VALUES(?,?,?)",
     [userId, section, value],
     function (err) {
@@ -173,7 +189,6 @@ app.post("/api/vote", (req, res) => {
   );
 });
 
-// (אופציונלי לבדיקות מהירות)
 app.get("/api/votes", (req, res) => {
   const userId = getUserIdFromAuth(req);
   const sql = userId
@@ -185,6 +200,5 @@ app.get("/api/votes", (req, res) => {
   );
 });
 
-// ----------
 app.get("/", (_req, res) => res.send("🚀 API OK"));
 app.listen(PORT, () => console.log(`🚀 http://localhost:${PORT}`));
