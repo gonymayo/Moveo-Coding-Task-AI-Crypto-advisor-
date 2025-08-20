@@ -13,6 +13,9 @@ They can also give feedback that is stored for future model improvements.
   - AI Insight of the Day
   - Fun Crypto Meme  
 - **Voting system** stored in SQLite DB  
+
+
+
 ## 📂 Project Architecture & Folder Structure
 
 ├─ client                    
@@ -42,12 +45,19 @@ They can also give feedback that is stored for future model improvements.
    ├─ coingecko.js            
    ├─ .env                     
    └─ package.json
+
+
+
+   
    
 ## Tech Stack
 - Frontend: React (Vite)  
 - Backend: Node.js + Express  
 - Database: SQLite  
 - APIs: CoinGecko, CryptoPanic (with fallback)  
+
+
+
 
 ## Run locally
 ```bash
@@ -57,7 +67,6 @@ npm install
 npm run dev        # frontend
 cd server && node index.js   # backend
                      
-
 
 
 
