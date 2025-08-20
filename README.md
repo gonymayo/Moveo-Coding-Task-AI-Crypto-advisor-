@@ -27,14 +27,15 @@ git clone https://github.com/gonymayo/Moveo-Coding-Task-AI-Crypto-advisor-.git
 cd Moveo-Coding-Task-AI-Crypto-advisor-
 npm install
 npm run dev        # frontend
-cd server && node index.js   # backend
+cd server &&
+node index.js   # backend
 
 
 
 ├─ client                    
 │  ├─ public
 │  │  └─ memes               
-│  ├─ src/
+│  ├─ src
 │  │  ├─ components         
 │  │  │  ├─ App.jsx
 │  │  │  ├─ Dashboard.jsx
@@ -44,7 +45,7 @@ cd server && node index.js   # backend
 │  │  │  └─ ProtectedRoute.jsx
 │  │  ├─ context
 │  │  │  └─ UserContext.jsx
-│  │  ├─ styles/          
+│  │  ├─ styles       
 │  │  │  ├─ Dashboard.css
 │  │  │  ├─ form.css
 │  │  │  ├─ App.css           
@@ -53,7 +54,7 @@ cd server && node index.js   # backend
 │  │  └─ index.html
 │  └─ package.json
 │
-└─ server/                   
+└─ server                  
    ├─ index.js                  
    ├─ coingecko.js            
    ├─ .env                     
