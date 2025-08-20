@@ -13,21 +13,6 @@ They can also give feedback that is stored for future model improvements.
   - AI Insight of the Day
   - Fun Crypto Meme  
 - **Voting system** stored in SQLite DB  
-
-## Tech Stack
-- Frontend: React (Vite)  
-- Backend: Node.js + Express  
-- Database: SQLite  
-- APIs: CoinGecko, CryptoPanic (with fallback)  
-
-## Run locally
-```bash
-git clone https://github.com/gonymayo/Moveo-Coding-Task-AI-Crypto-advisor-.git
-cd Moveo-Coding-Task-AI-Crypto-advisor-
-npm install
-npm run dev        # frontend
-cd server && node index.js   # backend
-                     
 ## 📂 Project Architecture & Folder Structure
 
 ├─ client                    
@@ -57,6 +42,22 @@ cd server && node index.js   # backend
    ├─ coingecko.js            
    ├─ .env                     
    └─ package.json
+   
+## Tech Stack
+- Frontend: React (Vite)  
+- Backend: Node.js + Express  
+- Database: SQLite  
+- APIs: CoinGecko, CryptoPanic (with fallback)  
+
+## Run locally
+```bash
+git clone https://github.com/gonymayo/Moveo-Coding-Task-AI-Crypto-advisor-.git
+cd Moveo-Coding-Task-AI-Crypto-advisor-
+npm install
+npm run dev        # frontend
+cd server && node index.js   # backend
+                     
+
 
 
 
