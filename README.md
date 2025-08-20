@@ -2,7 +2,7 @@
 
 This project is a full-stack web app that provides a personalized crypto investor dashboard.  
 Users register, complete a short onboarding quiz, and receive daily AI-curated content.  
-They can also give feedback (👍/👎) that is stored for future model improvements.  
+They can also give feedback that is stored for future model improvements.  
 
 ## Features
 - **Login/Signup** with JWT authentication  
