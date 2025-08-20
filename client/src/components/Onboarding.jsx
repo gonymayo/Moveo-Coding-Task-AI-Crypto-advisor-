@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/form.css";
 
+const BASE = (import.meta.env.VITE_API_ROOT || "").replace(/\/$/, "");
+
 export default function Onboarding() {
   const [investorType, setInvestorType] = useState("");
   const [contentType, setContentType]   = useState("");
@@ -17,11 +19,11 @@ export default function Onboarding() {
     setErr("");
     const token = localStorage.getItem("token");
     try {
-      const r = await fetch("http://localhost:4000/api/onboarding", {
+      const r = await fetch(`${BASE}/api/onboarding`, {
         method:"POST",
         headers:{
           "Content-Type":"application/json",
-          Authorization:`Bearer ${token}`
+          Authorization: token ? `Bearer ${token}` : undefined
         },
         body: JSON.stringify({ investorType, contentType, cryptoAssets })
       });
@@ -67,17 +69,17 @@ export default function Onboarding() {
           <fieldset>
             <legend>Crypto Assets</legend>
             <div className="checkbox-row">
-              <input type="checkbox" id="btc" value="BTC"
+              <input type="checkbox" id="btc"
                      onChange={(e)=>toggleAsset("BTC", e.target.checked)} />
               <label htmlFor="btc">BTC</label>
             </div>
             <div className="checkbox-row">
-              <input type="checkbox" id="eth" value="ETH"
+              <input type="checkbox" id="eth"
                      onChange={(e)=>toggleAsset("ETH", e.target.checked)} />
               <label htmlFor="eth">ETH</label>
             </div>
             <div className="checkbox-row">
-              <input type="checkbox" id="sol" value="SOL"
+              <input type="checkbox" id="sol"
                      onChange={(e)=>toggleAsset("SOL", e.target.checked)} />
               <label htmlFor="sol">SOL</label>
             </div>

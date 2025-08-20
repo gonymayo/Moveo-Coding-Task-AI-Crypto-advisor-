@@ -1,16 +1,16 @@
 import { useState } from "react";
 
+const BASE = (import.meta.env.VITE_API_ROOT || "").replace(/\/$/, "");
+
 export default function VoteButtons({ section }) {
-  const [vote, setVote] = useState(0); 
+  const [vote, setVote] = useState(0); // 0=none, 1=up, -1=down
 
   const handleVote = async (val) => {
     setVote(val);
-
     const token = localStorage.getItem("token");
     if (!token) return;
-
     try {
-      await fetch("http://localhost:4000/api/vote", {
+      await fetch(`${BASE}/api/vote`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
