@@ -31,8 +31,6 @@ cd server && node index.js   # backend
 
 
 
-## 📂 ## Project Architecture & Folder Structure
-
 ├─ client                    
 │  ├─ public
 │  │  └─ memes               
