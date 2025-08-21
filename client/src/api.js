@@ -52,13 +52,21 @@ export const api = {
 
   async news() {
     try {
-      // CryptoPanic API דורש KEY, לכן נעשה fallback לחדשות סטטיות
+      // CryptoPanic API – נשתמש ב-demo token או נעשה fallback
       const url =
         "https://cryptopanic.com/api/v1/posts/?auth_token=demo&currencies=BTC,ETH,SOL";
       const res = await fetch(url);
       const data = await res.json();
       return data.results
-        ? { items: data.results.map((n) => ({ id: n.id, title: n.title, url: n.url, source: n.source?.title, published_at: n.published_at })) }
+        ? {
+            items: data.results.map((n) => ({
+              id: n.id,
+              title: n.title,
+              url: n.url,
+              source: n.source?.title,
+              published_at: n.published_at,
+            })),
+          }
         : { items: [] };
     } catch (err) {
       console.error("news error", err);
@@ -78,7 +86,6 @@ export const api = {
 
   async insight() {
     try {
-      // fallback פשוט – טקסט רנדומלי
       const insights = [
         "Long-term holders often outperform day traders.",
         "Diversification reduces portfolio risk.",
@@ -94,14 +101,10 @@ export const api = {
 
   async meme() {
     try {
-      // מביא תמונה רנדומלית מתיקיית /memes בשרת
-      const memes = [
-        "meme1.jpg",
-        "meme2.jpg",
-        "meme3.jpg",
-      ];
+      // שמות הקבצים מתיקיית public/memes
+      const memes = ["meme1.jpg", "meme2.jpg", "meme3.jpg", "meme4.jpg"];
       const pick = memes[Math.floor(Math.random() * memes.length)];
-      return { title: "Crypto Meme", url: `${BASE}/memes/${pick}` };
+      return { title: "Crypto Meme", url: `/memes/${pick}` };
     } catch (err) {
       console.error("meme error", err);
       return { title: "No meme", url: "" };
