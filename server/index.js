@@ -38,17 +38,11 @@ const corsOptions = {
   allowedHeaders: ["Content-Type","Authorization"],
 };
 
-app.use((req,res,next)=>{
-  res.setHeader("Vary","Origin");
-  console.log("🌐 Origin:", req.headers.origin || "(none)");
-  next();
-});
-
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json());
 
-app.use((req, _res, next) => {
+app.use((req,_res,next)=>{
   req.id = crypto.randomBytes(6).toString("hex");
   console.log(`➡️  [${req.id}] ${req.method} ${req.originalUrl}`);
   next();
@@ -83,37 +77,35 @@ db.serialize(() => {
 /* =========================
    HELPERS
 ========================= */
-function dbRun(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function(err) {
-      if (err) reject(err); else resolve(this);
+function dbRun(sql, params=[]) {
+  return new Promise((resolve,reject)=>{
+    db.run(sql, params, function(err){
+      if(err) reject(err); else resolve(this);
     });
   });
 }
-function dbGet(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err,row)=> err ? reject(err) : resolve(row));
+function dbGet(sql, params=[]) {
+  return new Promise((resolve,reject)=>{
+    db.get(sql, params, (err,row)=> err?reject(err):resolve(row));
   });
 }
-function dbAll(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err,rows)=> err ? reject(err) : resolve(rows));
+function dbAll(sql, params=[]) {
+  return new Promise((resolve,reject)=>{
+    db.all(sql, params, (err,rows)=> err?reject(err):resolve(rows));
   });
 }
 
-function sign(user) {
-  return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn:"6h" });
+function sign(user){
+  return jwt.sign({ id:user.id, email:user.email }, JWT_SECRET, { expiresIn:"6h" });
 }
-function getUserIdFromAuth(req) {
-  try {
+function getUserIdFromAuth(req){
+  try{
     const h = req.headers.authorization || "";
-    const token = h.startsWith("Bearer ") ? h.slice(7) : "";
-    if (!token) return null;
+    const token = h.startsWith("Bearer ")? h.slice(7):"";
+    if(!token) return null;
     const dec = jwt.verify(token, JWT_SECRET);
     return dec?.id ?? null;
-  } catch {
-    return null;
-  }
+  }catch{ return null; }
 }
 
 function ok(res,data){ return res.json(data); }
@@ -134,16 +126,13 @@ const handle = fn => async (req,res,next)=>{
    ROUTES
 ========================= */
 
-// Static files (memes)
-app.use("/memes", express.static(path.join(__dirname,"memes")));
-
 // Register
 app.post("/api/register", handle(async (req,res)=>{
-  const {name,email,password} = req.body || {};
+  const { name,email,password } = req.body || {};
   if(!name || !email || !password) return fail(req,res,400,"Missing fields");
   const hashed = await bcrypt.hash(password,10);
   const r = await dbRun("INSERT INTO users(name,email,password) VALUES(?,?,?)",[name,email,hashed]);
-  const user = { id:r.lastID, name, email };
+  const user = { id:r.lastID, name,email };
   return ok(res,{ success:true, token:sign(user), user });
 }));
 
@@ -178,20 +167,22 @@ app.post("/api/vote", handle(async (req,res)=>{
   return ok(res,{ success:true });
 }));
 
+// CryptoPanic News Proxy
+app.get("/api/news", handle(async (req,res)=>{
+  const key = process.env.CRYPTOPANIC_KEY;
+  if(!key) return fail(req,res,500,"Missing CRYPTOPANIC_KEY");
+
+  const url = `https://cryptopanic.com/api/v1/posts/?auth_token=${key}&currencies=BTC,ETH,SOL`;
+  const r = await fetch(url);
+  if(!r.ok) return fail(req,res,r.status,"CryptoPanic request failed");
+
+  const data = await r.json();
+  return ok(res,data);
+}));
+
 // Health
 app.get("/", (_req,res)=> res.send("🚀 API OK"));
-app.get("/api/health", (_req,res)=> {
-  res.json({
-    ok:true,
-    time:new Date().toISOString(),
-    env:{
-      node:process.version,
-      port:PORT,
-      hasJwt:Boolean(process.env.JWT_SECRET),
-      dbFile:DB_FILE
-    }
-  });
-});
+app.get("/api/health", (_req,res)=> res.json({ ok:true, time:new Date().toISOString() }));
 
 /* =========================
    GLOBAL ERROR
