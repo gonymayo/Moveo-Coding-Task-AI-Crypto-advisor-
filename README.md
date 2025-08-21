@@ -56,6 +56,7 @@ node index.js   # backend
 │  │  ├─ main.jsx
 │  │  └─ index.html
 │  └─ package.json
+│  └─.env
 │
 └─ server                  
    ├─ index.js                  
