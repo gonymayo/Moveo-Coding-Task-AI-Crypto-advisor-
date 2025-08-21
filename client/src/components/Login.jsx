@@ -1,37 +1,45 @@
-import { useState, useContext } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { UserContext } from "../context/UserContext";
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import "../styles/form.css";
 
-const BASE = (import.meta.env.VITE_API_ROOT || "").replace(/\/$/, "");
+const API = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
 export default function Login() {
-  const { updateUser } = useContext(UserContext);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [err, setErr] = useState("");
   const navigate = useNavigate();
+  const [email, setEmail]       = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState("");
 
   const submit = async (e) => {
     e.preventDefault();
-    setErr("");
+    setError("");
+
+    if (!API) {
+      setError("חסר VITE_API_URL בקובץ .env של הקליינט");
+      return;
+    }
+
     try {
-      const r = await fetch(`${BASE}/api/login`, {
+      setLoading(true);
+      const r = await fetch(`${API}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password }),
       });
-      const data = await r.json();
-      if (!r.ok) return setErr(data.error || "Login failed");
 
-      localStorage.setItem("token", data.token);
-      updateUser?.(data.user);
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || data.message || "Login failed");
 
-      const hasPrefs = data.user?.investorType || data.user?.contentType;
+      if (data?.token) localStorage.setItem("token", data.token);
+      if (data?.user)  localStorage.setItem("user", JSON.stringify(data.user));
+
+      const hasPrefs = data?.user?.investorType || data?.user?.contentType;
       navigate(hasPrefs ? "/dashboard" : "/onboarding");
-    } catch {
-      setErr("Network error");
+    } catch (err) {
+      setError(err.message === "Failed to fetch" ? "Network error" : err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -49,9 +57,10 @@ export default function Login() {
             <input
               className="input"
               type="email"
+              placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              autoComplete="email"
               required
             />
           </div>
@@ -61,16 +70,20 @@ export default function Login() {
             <input
               className="input"
               type="password"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              autoComplete="current-password"
+              minLength={4}
               required
             />
           </div>
 
-          {err && <div className="error">{err}</div>}
+          {error && <div className="error">{error}</div>}
 
-          <button className="primary" type="submit">Login</button>
+          <button className="primary" type="submit" disabled={loading}>
+            {loading ? "Signing in…" : "Login"}
+          </button>
         </form>
 
         <div className="footer">

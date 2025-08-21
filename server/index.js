@@ -1,4 +1,3 @@
-// server/index.js
 import express from "express";
 import cors from "cors";
 import sqlite3 from "sqlite3";
@@ -6,25 +5,47 @@ import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import fetch from "node-fetch";
+import crypto from "crypto";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config();
+
+
 const app = express();
 const PORT = process.env.PORT || 4000;
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
-const FRONTEND_ORIGIN =
-  process.env.CORS_ORIGIN || "http://localhost:5173";
+const DB_FILE = process.env.DB_FILE || "./mydb.sqlite";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
+  .split(",").map(s => s.trim());
 
 app.use(cors({
-  origin: FRONTEND_ORIGIN,
-  credentials: true
+  origin(origin, cb) {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error("Not allowed by CORS"));
+  },
+  methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false 
 }));
+app.options("*", cors());
 
 
-app.use(cors({ origin: FRONTEND_ORIGIN }));
 app.use(express.json());
 
-const db = new sqlite3.Database("./mydb.sqlite", (err) =>
-  console.log(err ? "❌ SQLite error: " + err.message : "✅ SQLite ready")
+app.use((req, _res, next) => {
+  req.id = crypto.randomBytes(6).toString("hex");
+  console.log(`➡️  [${req.id}] ${req.method} ${req.originalUrl}`);
+  next();
+});
+
+
+
+const db = new sqlite3.Database(DB_FILE, (err) =>
+  console.log(err ? "❌ SQLite error: " + err.message : "✅ SQLite ready at " + DB_FILE)
 );
 
 db.serialize(() => {
@@ -37,174 +58,120 @@ db.serialize(() => {
     contentType TEXT,
     cryptoAssets TEXT
   )`);
-
   db.run(`CREATE TABLE IF NOT EXISTS votes(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     userId INTEGER,
-    section TEXT,         -- 'news' | 'prices' | 'aiInsight' | 'meme'
-    value INTEGER,        -- 1 | -1
+    section TEXT,
+    value INTEGER,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 });
 
-// ---------- helpers ----------
-const sign = (u) => jwt.sign({ id: u.id, email: u.email }, JWT_SECRET, { expiresIn: "6h" });
-const getUserIdFromAuth = (req) => {
+function dbRun(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) {
+      if (err) reject(err); else resolve(this);
+    });
+  });
+}
+function dbGet(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => err ? reject(err) : resolve(row));
+  });
+}
+function dbAll(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => err ? reject(err) : resolve(rows));
+  });
+}
+
+
+function sign(user) {
+  return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "6h" });
+}
+
+function getUserIdFromAuth(req) {
   try {
     const h = req.headers.authorization || "";
     const token = h.startsWith("Bearer ") ? h.slice(7) : "";
     if (!token) return null;
     const dec = jwt.verify(token, JWT_SECRET);
     return dec?.id ?? null;
-  } catch { return null; }
+  } catch (err) {
+    console.warn(`⚠️  [${req.id}] Invalid token: ${err.message}`);
+    return null;
+  }
+}
+
+function ok(res, data) {
+  return res.json(data);
+}
+
+function fail(req, res, status, message, details) {
+  const info = details ? ` | ${details}` : "";
+  console.error(`❌ [${req.id}] ${message}${info}`);
+  return res.status(status).json({ error: message });
+}
+
+const handle = (fn) => async (req, res, next) => {
+  try { await fn(req, res); }
+  catch (err) {
+    console.error(`🔥 [${req.id}] Uncaught: ${err.message}`);
+    console.error(err.stack);
+    return fail(req, res, 500, err.message || "Server error");
+  }
 };
 
-// ---------- Auth ----------
-app.post("/api/register", async (req, res) => {
-  const { name, email, password } = req.body || {};
-  if (!name || !email || !password) return res.status(400).json({ error: "Missing fields" });
+
+app.use("/memes", express.static(path.join(__dirname, "memes")));
+
+
+app.post("/api/register", handle(async (req, res) => {
   try {
+    const { name, email, password } = req.body || {};
+    if (!name || !email || !password) return fail(req, res, 400, "Missing fields");
+
+    console.log(`📩 [${req.id}] Register attempt: ${email}`);
+
     const hashed = await bcrypt.hash(password, 10);
-    db.run("INSERT INTO users(name,email,password) VALUES(?,?,?)", [name, email, hashed], function (err) {
-      if (err) return res.status(409).json({ error: "User exists" });
-      const user = { id: this.lastID, name, email };
-      return res.json({ success: true, token: sign(user), user });
-    });
-  } catch { res.status(500).json({ error: "Server error" }); }
-});
+    const r = await dbRun("INSERT INTO users(name,email,password) VALUES(?,?,?)", [name, email, hashed]);
+    const user = { id: r.lastID, name, email };
+    console.log(`✅ [${req.id}] Register success: ${email}`);
+    return ok(res, { success: true, token: sign(user), user });
+  } catch (err) {
+    console.error(`❌ [${req.id}] Register failed: ${err.message}`);
+    throw err;
+  }
+}));
 
-app.post("/api/login", (req, res) => {
-  const { email, password } = req.body || {};
-  if (!email || !password) return res.status(400).json({ error: "Missing fields" });
 
-  db.get("SELECT * FROM users WHERE email=?", [email], async (err, row) => {
-    if (err) return res.status(500).json({ error: "DB error" });
-    if (!row || !(await bcrypt.compare(password, row.password)))
-      return res.status(401).json({ error: "Invalid credentials" });
-
-    const user = {
-      id: row.id, name: row.name, email: row.email,
-      investorType: row.investorType, contentType: row.contentType, cryptoAssets: row.cryptoAssets
-    };
-    res.json({ success: true, token: sign(user), user });
-  });
-});
-
-app.get("/api/me", (req, res) => {
-  const userId = getUserIdFromAuth(req);
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
-  db.get("SELECT * FROM users WHERE id=?", [userId], (err, row) => {
-    if (err || !row) return res.status(404).json({ error: "User not found" });
+app.get("/", (_req, res) => res.send("🚀 API OK"));
+app.get("/api/health", (_req, res) => {
+  try {
     res.json({
-      id: row.id, name: row.name, email: row.email,
-      investorType: row.investorType, contentType: row.contentType, cryptoAssets: row.cryptoAssets
+      ok: true,
+      time: new Date().toISOString(),
+      env: {
+        node: process.version,
+        port: PORT,
+        hasJwt: Boolean(process.env.JWT_SECRET),
+        dbFile: DB_FILE
+      }
     });
-  });
-});
-
-// ---------- Onboarding ----------
-app.post("/api/onboarding", (req, res) => {
-  const userId = getUserIdFromAuth(req);
-  if (!userId) return res.status(401).json({ error: "Unauthorized" });
-
-  const { investorType, contentType, cryptoAssets } = req.body || {};
-  db.run(
-    "UPDATE users SET investorType=?, contentType=?, cryptoAssets=? WHERE id=?",
-    [investorType || null, contentType || null, JSON.stringify(cryptoAssets || []), userId],
-    (err) => (err ? res.status(500).json({ error: "Save failed" }) : res.json({ success: true }))
-  );
-});
-
-// ---------- Data: prices / news / insight / meme ----------
-const CG = "https://api.coingecko.com/api/v3";
-
-app.get("/api/prices", async (_req, res) => {
-  try {
-    const r = await fetch(`${CG}/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd`);
-    res.json(await r.json());
-  } catch { res.json({ bitcoin:{usd:0}, ethereum:{usd:0}, solana:{usd:0} }); }
-});
-
-app.get("/api/news", async (_req, res) => {
-  const key = process.env.CRYPTOPANIC_KEY || "";
-  try {
-    const url = key
-      ? `https://cryptopanic.com/api/v1/posts/?auth_token=${key}&currencies=BTC,ETH,SOL&public=true`
-      : `https://cryptopanic.com/api/v1/posts/?public=true`; // אם אין מפתח—ננסה פומבי
-
-    const r = await fetch(url);
-    if (!r.ok) throw new Error("news fetch failed");
-    const j = await r.json();
-    const items = (j.results || []).map(p => ({
-      id: p.id,
-      title: p.title,
-      url: p.url,
-      source: p.source?.title || "News",
-      published_at: p.published_at
-    }));
-    if (!items.length) throw new Error("no items");
-    return res.json({ items });
-  } catch {
-    return res.json({
-      items: [
-        { id: "cd", title: "Latest crypto headlines", url: "https://www.coindesk.com/", source: "CoinDesk", published_at: new Date().toISOString() },
-        { id: "ct", title: "Top stories today",      url: "https://cointelegraph.com/", source: "CoinTelegraph", published_at: new Date().toISOString() },
-        { id: "cp", title: "CryptoPanic aggregator", url: "https://cryptopanic.com/",   source: "CryptoPanic",   published_at: new Date().toISOString() }
-      ]
-    });
+  } catch (err) {
+    console.error("❌ Health endpoint error:", err.message);
+    res.status(500).json({ error: "Health check failed" });
   }
 });
 
-
-app.get("/api/insight", (req, res) => {
-  const userId = getUserIdFromAuth(req);
-  if (!userId) return res.json({ insight: "Tip: diversify and set alerts for BTC." });
-
-  db.get("SELECT investorType, contentType, cryptoAssets FROM users WHERE id=?", [userId], (err, row) => {
-    if (err || !row) return res.json({ insight: "Tip: diversify and set alerts for BTC." });
-    let assets = []; try { assets = JSON.parse(row.cryptoAssets || "[]"); } catch {}
-    const asset = assets[0] || "BTC";
-    const type  = row.investorType || "crypto investor";
-    const kind  = row.contentType || "News";
-    res.json({ insight: `Insight: As a ${type} who likes ${kind}, keep an eye on ${asset} today.` });
-  });
+/* =========================
+   Global error handler
+========================= */
+app.use((err, req, res, _next) => {
+  console.error(`🔥 [${req?.id || "no-id"}] Uncaught (global): ${err.message}`);
+  console.error(err.stack);
+  res.status(500).json({ error: err.message || "Unexpected server error" });
 });
 
-const MEMES = [
-  { url: "/memes/meme1.jpg" },
-  { url: "/memes/meme2.jpg" },
-  { url: "/memes/meme3.jpg" },
-  { url: "/memes/meme4.jpg" }
-];
-app.get("/api/meme", (_req, res) => res.json(MEMES[Math.floor(Math.random()*MEMES.length)]));
 
-app.post("/api/vote", (req, res) => {
-  const { section, value } = req.body || {};
-  if (!["news","prices","aiInsight","meme"].includes(section))
-    return res.status(400).json({ error: "Invalid section" });
-  if (![1,-1].includes(value))
-    return res.status(400).json({ error: "Invalid value" });
-
-  const userId = getUserIdFromAuth(req); 
-  db.run("INSERT INTO votes(userId, section, value) VALUES(?,?,?)",
-    [userId, section, value],
-    function (err) {
-      if (err) return res.status(500).json({ error: "DB error" });
-      res.json({ success: true, id: this.lastID });
-    }
-  );
-});
-
-app.get("/api/votes", (req, res) => {
-  const userId = getUserIdFromAuth(req);
-  const sql = userId
-    ? "SELECT section, value, createdAt FROM votes WHERE userId=? ORDER BY id DESC LIMIT 20"
-    : "SELECT userId, section, value, createdAt FROM votes ORDER BY id DESC LIMIT 20";
-  const params = userId ? [userId] : [];
-  db.all(sql, params, (err, rows) =>
-    err ? res.status(500).json({ error: "DB error" }) : res.json({ items: rows })
-  );
-});
-
-app.get("/", (_req, res) => res.send("🚀 API OK"));
-app.listen(PORT, () => console.log(`🚀 http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));

@@ -1,4 +1,3 @@
-// client/src/api.js
 const BASE =
   (import.meta.env.VITE_API_ROOT || window.location.origin).replace(/\/$/, "");
 
