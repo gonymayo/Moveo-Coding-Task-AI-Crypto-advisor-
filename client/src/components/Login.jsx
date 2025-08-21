@@ -1,45 +1,28 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { UserContext } from "../context/UserContext";
+import { api } from "../api";
 import "../styles/form.css";
 
-const API = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
-
 export default function Login() {
-  const navigate = useNavigate();
-  const [email, setEmail]       = useState("");
+  const { setUser } = useContext(UserContext);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
+  const [err, setErr] = useState("");
+  const navigate = useNavigate();
 
   const submit = async (e) => {
     e.preventDefault();
-    setError("");
-
-    if (!API) {
-      setError("חסר VITE_API_URL בקובץ .env של הקליינט");
-      return;
-    }
-
+    setErr("");
     try {
-      setLoading(true);
-      const r = await fetch(`${API}/api/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      const data = await api.login(email, password);
+      localStorage.setItem("token", data.token);
+      setUser(data.user);
 
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(data.error || data.message || "Login failed");
-
-      if (data?.token) localStorage.setItem("token", data.token);
-      if (data?.user)  localStorage.setItem("user", JSON.stringify(data.user));
-
-      const hasPrefs = data?.user?.investorType || data?.user?.contentType;
+      const hasPrefs = data.user?.investorType || data.user?.contentType;
       navigate(hasPrefs ? "/dashboard" : "/onboarding");
-    } catch (err) {
-      setError(err.message === "Failed to fetch" ? "Network error" : err.message);
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      setErr(e.message || "Network error");
     }
   };
 
@@ -54,36 +37,20 @@ export default function Login() {
         <form onSubmit={submit}>
           <div>
             <label>Email</label>
-            <input
-              className="input"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-            />
+            <input className="input" type="email"
+              value={email} onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com" required />
           </div>
 
           <div>
             <label>Password</label>
-            <input
-              className="input"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              minLength={4}
-              required
-            />
+            <input className="input" type="password"
+              value={password} onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••" required />
           </div>
 
-          {error && <div className="error">{error}</div>}
-
-          <button className="primary" type="submit" disabled={loading}>
-            {loading ? "Signing in…" : "Login"}
-          </button>
+          {err && <div className="error">{err}</div>}
+          <button className="primary" type="submit">Login</button>
         </form>
 
         <div className="footer">

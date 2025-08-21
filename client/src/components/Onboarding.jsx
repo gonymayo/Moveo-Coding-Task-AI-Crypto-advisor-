@@ -1,50 +1,26 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { api } from "../api";
 import "../styles/form.css";
 
-const API = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
-
 export default function Onboarding() {
-  const navigate = useNavigate();
-
   const [investorType, setInvestorType] = useState("");
   const [contentType, setContentType]   = useState("");
-  const [cryptoAssets, setCryptoAssets] = useState([]); 
-  const [loading, setLoading]           = useState(false);
-  const [error, setError]               = useState("");
+  const [cryptoAssets, setAssets]       = useState([]);
+  const [err, setErr]                   = useState("");
+  const navigate = useNavigate();
+
+  const toggleAsset = (val, checked) =>
+    setAssets(prev => checked ? [...prev, val] : prev.filter(a => a !== val));
 
   const submit = async (e) => {
     e.preventDefault();
-    setError("");
-
-    if (!API) {
-      setError("חסר VITE_API_URL בקובץ .env של הקליינט");
-      return;
-    }
-
+    setErr("");
     try {
-      setLoading(true);
-      const token = localStorage.getItem("token") || "";
-
-      const r = await fetch(`${API}/api/onboarding`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
-        },
-        body: JSON.stringify({ investorType, contentType, cryptoAssets }),
-      });
-
-      if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        throw new Error(j.error || "Failed to save preferences");
-      }
-
+      await api.onboarding({ investorType, contentType, cryptoAssets });
       navigate("/dashboard");
-    } catch (err) {
-      setError(err.message === "Failed to fetch" ? "Network error" : err.message);
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      setErr(e.message || "Failed to save preferences");
     }
   };
 
@@ -53,37 +29,51 @@ export default function Onboarding() {
       <div className="card">
         <div className="header">
           <h1 className="title">Onboarding</h1>
-          <p className="subtitle">Tell us a bit so we can personalize</p>
+          <p className="subtitle">Tell us what you like and we’ll tailor your feed</p>
         </div>
 
         <form onSubmit={submit}>
-          {}
-          {}
-          <div>
-            <label>Investor Type</label>
-            <input
-              className="input"
-              value={investorType}
-              onChange={(e) => setInvestorType(e.target.value)}
-              placeholder="e.g. long-term"
-            />
+          <div className="grid-2">
+            <div>
+              <label>Investor Type</label>
+              <select value={investorType} onChange={e=>setInvestorType(e.target.value)} required>
+                <option value="">Select…</option>
+                <option value="HODLer">HODLer</option>
+                <option value="Day Trader">Day Trader</option>
+                <option value="NFT Collector">NFT Collector</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Preferred Content</label>
+              <select value={contentType} onChange={e=>setContentType(e.target.value)} required>
+                <option value="">Select…</option>
+                <option value="News">Market News</option>
+                <option value="Charts">Charts</option>
+                <option value="Social">Social</option>
+                <option value="Fun">Fun</option>
+              </select>
+            </div>
           </div>
 
-          <div>
-            <label>Content Type</label>
-            <input
-              className="input"
-              value={contentType}
-              onChange={(e) => setContentType(e.target.value)}
-              placeholder="e.g. News"
-            />
-          </div>
+          <fieldset>
+            <legend>Crypto Assets</legend>
+            <div className="checkbox-row">
+              <input type="checkbox" id="btc" onChange={(e)=>toggleAsset("BTC", e.target.checked)} />
+              <label htmlFor="btc">BTC</label>
+            </div>
+            <div className="checkbox-row">
+              <input type="checkbox" id="eth" onChange={(e)=>toggleAsset("ETH", e.target.checked)} />
+              <label htmlFor="eth">ETH</label>
+            </div>
+            <div className="checkbox-row">
+              <input type="checkbox" id="sol" onChange={(e)=>toggleAsset("SOL", e.target.checked)} />
+              <label htmlFor="sol">SOL</label>
+            </div>
+          </fieldset>
 
-          {error && <div className="error">{error}</div>}
-
-          <button className="primary" type="submit" disabled={loading}>
-            {loading ? "Saving…" : "Save & Continue"}
-          </button>
+          {err && <div className="error">{err}</div>}
+          <button className="primary" type="submit">Save Preferences</button>
         </form>
       </div>
     </div>

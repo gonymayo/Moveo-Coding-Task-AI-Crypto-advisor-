@@ -1,52 +1,46 @@
-const BASE =
-  (import.meta.env.VITE_API_ROOT || window.location.origin).replace(/\/$/, "");
+// client/src/api.js
+const BASE = (import.meta.env.VITE_API_ROOT || "http://localhost:4000").replace(/\/$/, "");
 
-function authHeaders() {
-  const token = localStorage.getItem("token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
+// Timeout נחמד כדי לא להיתקע לנצח
+async function request(path, { method="GET", body, auth=false } = {}) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 12000);
 
-async function send(path, { method = "GET", body, auth = false } = {}) {
   const headers = { "Content-Type": "application/json" };
-  if (auth) Object.assign(headers, authHeaders());
-
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-    credentials: "include",
-  });
-
-  // ננסה לפרש JSON גם כשיש שגיאה מהשרת
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = data.error || `Request failed: ${res.status}`;
-    throw new Error(msg);
+  if (auth) {
+    const token = localStorage.getItem("token");
+    if (token) headers.Authorization = `Bearer ${token}`;
   }
-  return data;
+
+  try {
+    const res = await fetch(`${BASE}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: ctrl.signal,
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+    return data;
+  } catch (err) {
+    if (err.name === "AbortError") throw new Error("Request timeout");
+    throw err;
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 export const api = {
-  login: (email, password) =>
-    send("/api/login", { method: "POST", body: { email, password } }),
+  login:     (email, password)         => request("/api/login",      { method:"POST", body:{ email, password } }),
+  register:  (name, email, password)   => request("/api/register",   { method:"POST", body:{ name, email, password } }),
+  onboarding:(payload)                 => request("/api/onboarding", { method:"POST", body: payload, auth:true }),
 
-  register: (name, email, password) =>
-    send("/api/register", { method: "POST", body: { name, email, password } }),
+  me:        () => request("/api/me",      { auth:true }),
+  prices:    () => request("/api/prices"),
+  news:      () => request("/api/news"),
+  insight:   () => request("/api/insight", { auth:true }),
+  meme:      () => request("/api/meme"),
 
-  me: () => send("/api/me", { auth: true }),
-
-  onboarding: (payload) =>
-    send("/api/onboarding", { method: "POST", body: payload, auth: true }),
-
-  prices: () => send("/api/prices"),
-  news: () => send("/api/news"),
-  insight: () => send("/api/insight", { auth: true }),
-  meme: () => send("/api/meme"),
-
-  vote: (section, value) =>
-    send("/api/vote", {
-      method: "POST",
-      body: { section, value },
-      auth: true,
-    }),
+  vote:      (section, value)          => request("/api/vote", { method:"POST", body:{ section, value }, auth:true }),
 };
