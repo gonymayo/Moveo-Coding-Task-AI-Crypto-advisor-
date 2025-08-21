@@ -4,6 +4,9 @@ This project is a full-stack web app that provides a personalized crypto investo
 Users register, complete a short onboarding quiz, and receive daily AI-curated content.  
 They can also give feedback that is stored for future model improvements.  
 
+## online app
+https://moveo-coding-task-ai-crypto-advisor.vercel.app/
+
 ## Features
 - **Login/Signup** with JWT authentication  
 - **Onboarding quiz** to collect preferences  
