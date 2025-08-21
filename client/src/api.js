@@ -99,15 +99,14 @@ export const api = {
     }
   },
 
-  async meme() {
-    try {
-      // שמות הקבצים מתיקיית public/memes
-      const memes = ["meme1.jpg", "meme2.jpg", "meme3.jpg", "meme4.jpg"];
-      const pick = memes[Math.floor(Math.random() * memes.length)];
-      return { title: "Crypto Meme", url: `/memes/${pick}` };
-    } catch (err) {
-      console.error("meme error", err);
-      return { title: "No meme", url: "" };
+async meme() {
+  try {
+    const memes = ["meme1.jpg","meme2.jpg","meme3.jpg","meme4.jpg"];
+    const pick = memes[Math.floor(Math.random() * memes.length)];
+    return { title:"Crypto Meme", url:`/memes/${pick}` };
+  } catch(err) {
+    console.error("meme error", err);
+    return { title:"No meme", url:"" };
     }
-  },
-};
+   }
+  }
