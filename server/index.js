@@ -21,24 +21,31 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
    CORS CONFIG
 ========================= */
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
-  .split(",").map(s => s.trim());
+  .split(",")
+  .map(s => s.trim())
+  .filter(Boolean);
 
-app.use(cors({
-  origin: function (origin, cb) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      cb(null, true);
-    } else {
-      cb(new Error("Not allowed by CORS"));
-    }
+const allowedSet = new Set(allowedOrigins);
+
+const corsOptions = {
+  origin(origin, cb) {
+    if (!origin) return cb(null, true);
+    const ok = allowedSet.has(origin) || /\.vercel\.app$/.test(origin);
+    return ok ? cb(null, true) : cb(new Error("Not allowed by CORS: " + origin));
   },
+  credentials: true,
   methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
-}));
+  allowedHeaders: ["Content-Type","Authorization"],
+};
 
-// Handle preflight
-app.options("*", cors());
+app.use((req,res,next)=>{
+  res.setHeader("Vary","Origin");
+  console.log("🌐 Origin:", req.headers.origin || "(none)");
+  next();
+});
 
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 app.use((req, _res, next) => {
@@ -85,19 +92,18 @@ function dbRun(sql, params = []) {
 }
 function dbGet(sql, params = []) {
   return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => err ? reject(err) : resolve(row));
+    db.get(sql, params, (err,row)=> err ? reject(err) : resolve(row));
   });
 }
 function dbAll(sql, params = []) {
   return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => err ? reject(err) : resolve(rows));
+    db.all(sql, params, (err,rows)=> err ? reject(err) : resolve(rows));
   });
 }
 
 function sign(user) {
-  return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "6h" });
+  return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn:"6h" });
 }
-
 function getUserIdFromAuth(req) {
   try {
     const h = req.headers.authorization || "";
@@ -105,28 +111,22 @@ function getUserIdFromAuth(req) {
     if (!token) return null;
     const dec = jwt.verify(token, JWT_SECRET);
     return dec?.id ?? null;
-  } catch (err) {
-    console.warn(`⚠️  [${req.id}] Invalid token: ${err.message}`);
+  } catch {
     return null;
   }
 }
 
-function ok(res, data) {
-  return res.json(data);
-}
-
-function fail(req, res, status, message, details) {
-  const info = details ? ` | ${details}` : "";
-  console.error(`❌ [${req.id}] ${message}${info}`);
+function ok(res,data){ return res.json(data); }
+function fail(req,res,status,message,details){
+  console.error(`❌ [${req.id}] ${message}${details? " | "+details:""}`);
   return res.status(status).json({ error: message });
 }
 
-const handle = (fn) => async (req, res, next) => {
-  try { await fn(req, res); }
-  catch (err) {
-    console.error(`🔥 [${req.id}] Uncaught: ${err.message}`);
-    console.error(err.stack);
-    return fail(req, res, 500, err.message || "Server error");
+const handle = fn => async (req,res,next)=>{
+  try{ await fn(req,res); }
+  catch(err){
+    console.error(`🔥 [${req.id}] ${err.message}`);
+    return fail(req,res,500,err.message||"Server error");
   }
 };
 
@@ -135,49 +135,70 @@ const handle = (fn) => async (req, res, next) => {
 ========================= */
 
 // Static files (memes)
-app.use("/memes", express.static(path.join(__dirname, "memes")));
+app.use("/memes", express.static(path.join(__dirname,"memes")));
 
 // Register
-app.post("/api/register", handle(async (req, res) => {
-  const { name, email, password } = req.body || {};
-  if (!name || !email || !password) return fail(req, res, 400, "Missing fields");
-
-  console.log(`📩 [${req.id}] Register attempt: ${email}`);
-
-  const hashed = await bcrypt.hash(password, 10);
-  const r = await dbRun("INSERT INTO users(name,email,password) VALUES(?,?,?)", [name, email, hashed]);
-  const user = { id: r.lastID, name, email };
-  console.log(`✅ [${req.id}] Register success: ${email}`);
-  return ok(res, { success: true, token: sign(user), user });
+app.post("/api/register", handle(async (req,res)=>{
+  const {name,email,password} = req.body || {};
+  if(!name || !email || !password) return fail(req,res,400,"Missing fields");
+  const hashed = await bcrypt.hash(password,10);
+  const r = await dbRun("INSERT INTO users(name,email,password) VALUES(?,?,?)",[name,email,hashed]);
+  const user = { id:r.lastID, name, email };
+  return ok(res,{ success:true, token:sign(user), user });
 }));
 
-// Health check
-app.get("/", (_req, res) => res.send("🚀 API OK"));
-app.get("/api/health", (_req, res) => {
-  try {
-    res.json({
-      ok: true,
-      time: new Date().toISOString(),
-      env: {
-        node: process.version,
-        port: PORT,
-        hasJwt: Boolean(process.env.JWT_SECRET),
-        dbFile: DB_FILE
-      }
-    });
-  } catch (err) {
-    console.error("❌ Health endpoint error:", err.message);
-    res.status(500).json({ error: "Health check failed" });
-  }
+// Login
+app.post("/api/login", handle(async (req,res)=>{
+  const { email,password } = req.body || {};
+  if(!email || !password) return fail(req,res,400,"Missing fields");
+  const user = await dbGet("SELECT * FROM users WHERE email=?",[email]);
+  if(!user) return fail(req,res,401,"Invalid email or password");
+  const match = await bcrypt.compare(password,user.password);
+  if(!match) return fail(req,res,401,"Invalid email or password");
+  return ok(res,{ token:sign(user), user });
+}));
+
+// Onboarding
+app.post("/api/onboarding", handle(async (req,res)=>{
+  const userId = getUserIdFromAuth(req);
+  if(!userId) return fail(req,res,401,"Unauthorized");
+  const { investorType, contentType, cryptoAssets } = req.body || {};
+  await dbRun("UPDATE users SET investorType=?, contentType=?, cryptoAssets=? WHERE id=?",
+    [investorType||null, contentType||null, JSON.stringify(cryptoAssets||[]), userId]);
+  const user = await dbGet("SELECT * FROM users WHERE id=?",[userId]);
+  return ok(res,{ success:true, user });
+}));
+
+// Vote
+app.post("/api/vote", handle(async (req,res)=>{
+  const userId = getUserIdFromAuth(req);
+  if(!userId) return fail(req,res,401,"Unauthorized");
+  const { section,value } = req.body || {};
+  await dbRun("INSERT INTO votes(userId,section,value) VALUES(?,?,?)",[userId,section,value]);
+  return ok(res,{ success:true });
+}));
+
+// Health
+app.get("/", (_req,res)=> res.send("🚀 API OK"));
+app.get("/api/health", (_req,res)=> {
+  res.json({
+    ok:true,
+    time:new Date().toISOString(),
+    env:{
+      node:process.version,
+      port:PORT,
+      hasJwt:Boolean(process.env.JWT_SECRET),
+      dbFile:DB_FILE
+    }
+  });
 });
 
 /* =========================
-   Global error handler
+   GLOBAL ERROR
 ========================= */
-app.use((err, req, res, _next) => {
-  console.error(`🔥 [${req?.id || "no-id"}] Uncaught (global): ${err.message}`);
-  console.error(err.stack);
-  res.status(500).json({ error: err.message || "Unexpected server error" });
+app.use((err,req,res,_next)=>{
+  console.error(`🔥 [${req?.id||"no-id"}] ${err.message}`);
+  res.status(500).json({ error: err.message||"Unexpected error" });
 });
 
-app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
+app.listen(PORT, ()=> console.log(`🚀 Server running at http://localhost:${PORT}`));
