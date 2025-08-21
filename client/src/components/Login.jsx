@@ -14,14 +14,21 @@ export default function Login() {
   const submit = async (e) => {
     e.preventDefault();
     setErr("");
+    console.log("🔹 Trying to login with:", { email, password });
+
     try {
       const data = await api.login(email, password);
+      console.log("✅ Login success, server response:", data);
+
       localStorage.setItem("token", data.token);
       setUser(data.user);
 
       const hasPrefs = data.user?.investorType || data.user?.contentType;
+      console.log("➡️ Redirecting user, hasPrefs =", hasPrefs);
+
       navigate(hasPrefs ? "/dashboard" : "/onboarding");
     } catch (e) {
+      console.error("❌ Login failed:", e);
       setErr(e.message || "Network error");
     }
   };
@@ -37,20 +44,33 @@ export default function Login() {
         <form onSubmit={submit}>
           <div>
             <label>Email</label>
-            <input className="input" type="email"
-              value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com" required />
+            <input
+              className="input"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+            />
           </div>
 
           <div>
             <label>Password</label>
-            <input className="input" type="password"
-              value={password} onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••" required />
+            <input
+              className="input"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
           </div>
 
           {err && <div className="error">{err}</div>}
-          <button className="primary" type="submit">Login</button>
+
+          <button className="primary" type="submit">
+            Login
+          </button>
         </form>
 
         <div className="footer">
