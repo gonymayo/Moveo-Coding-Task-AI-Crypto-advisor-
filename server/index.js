@@ -11,28 +11,33 @@ import { fileURLToPath } from "url";
 
 dotenv.config();
 
-
 const app = express();
 const PORT = process.env.PORT || 4000;
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 const DB_FILE = process.env.DB_FILE || "./mydb.sqlite";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-
+/* =========================
+   CORS CONFIG
+========================= */
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
   .split(",").map(s => s.trim());
 
 app.use(cors({
-  origin(origin, cb) {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    return cb(new Error("Not allowed by CORS"));
+  origin: function (origin, cb) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Not allowed by CORS"));
+    }
   },
   methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: false 
+  credentials: true
 }));
-app.options("*", cors());
 
+// Handle preflight
+app.options("*", cors());
 
 app.use(express.json());
 
@@ -42,8 +47,9 @@ app.use((req, _res, next) => {
   next();
 });
 
-
-
+/* =========================
+   SQLITE INIT
+========================= */
 const db = new sqlite3.Database(DB_FILE, (err) =>
   console.log(err ? "❌ SQLite error: " + err.message : "✅ SQLite ready at " + DB_FILE)
 );
@@ -67,6 +73,9 @@ db.serialize(() => {
   )`);
 });
 
+/* =========================
+   HELPERS
+========================= */
 function dbRun(sql, params = []) {
   return new Promise((resolve, reject) => {
     db.run(sql, params, function(err) {
@@ -84,7 +93,6 @@ function dbAll(sql, params = []) {
     db.all(sql, params, (err, rows) => err ? reject(err) : resolve(rows));
   });
 }
-
 
 function sign(user) {
   return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "6h" });
@@ -122,29 +130,28 @@ const handle = (fn) => async (req, res, next) => {
   }
 };
 
+/* =========================
+   ROUTES
+========================= */
 
+// Static files (memes)
 app.use("/memes", express.static(path.join(__dirname, "memes")));
 
-
+// Register
 app.post("/api/register", handle(async (req, res) => {
-  try {
-    const { name, email, password } = req.body || {};
-    if (!name || !email || !password) return fail(req, res, 400, "Missing fields");
+  const { name, email, password } = req.body || {};
+  if (!name || !email || !password) return fail(req, res, 400, "Missing fields");
 
-    console.log(`📩 [${req.id}] Register attempt: ${email}`);
+  console.log(`📩 [${req.id}] Register attempt: ${email}`);
 
-    const hashed = await bcrypt.hash(password, 10);
-    const r = await dbRun("INSERT INTO users(name,email,password) VALUES(?,?,?)", [name, email, hashed]);
-    const user = { id: r.lastID, name, email };
-    console.log(`✅ [${req.id}] Register success: ${email}`);
-    return ok(res, { success: true, token: sign(user), user });
-  } catch (err) {
-    console.error(`❌ [${req.id}] Register failed: ${err.message}`);
-    throw err;
-  }
+  const hashed = await bcrypt.hash(password, 10);
+  const r = await dbRun("INSERT INTO users(name,email,password) VALUES(?,?,?)", [name, email, hashed]);
+  const user = { id: r.lastID, name, email };
+  console.log(`✅ [${req.id}] Register success: ${email}`);
+  return ok(res, { success: true, token: sign(user), user });
 }));
 
-
+// Health check
 app.get("/", (_req, res) => res.send("🚀 API OK"));
 app.get("/api/health", (_req, res) => {
   try {
@@ -172,6 +179,5 @@ app.use((err, req, res, _next) => {
   console.error(err.stack);
   res.status(500).json({ error: err.message || "Unexpected server error" });
 });
-
 
 app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
