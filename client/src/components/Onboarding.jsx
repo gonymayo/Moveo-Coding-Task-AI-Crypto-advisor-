@@ -16,11 +16,20 @@ export default function Onboarding() {
   const submit = async (e) => {
     e.preventDefault();
     setErr("");
+    console.log("📩 Submitting Onboarding form:", {
+      investorType,
+      contentType,
+      cryptoAssets,
+    });
+
     try {
-      await api.onboarding({ investorType, contentType, cryptoAssets });
+      const res = await api.onboarding({ investorType, contentType, cryptoAssets });
+      console.log("✅ Onboarding saved successfully:", res);
+
       navigate("/dashboard");
-    } catch (e) {
-      setErr(e.message || "Failed to save preferences");
+    } catch (error) {
+      console.error("❌ Onboarding failed:", error.message);
+      setErr(error.message || "Failed to save preferences");
     }
   };
 
@@ -36,7 +45,11 @@ export default function Onboarding() {
           <div className="grid-2">
             <div>
               <label>Investor Type</label>
-              <select value={investorType} onChange={e=>setInvestorType(e.target.value)} required>
+              <select
+                value={investorType}
+                onChange={(e) => setInvestorType(e.target.value)}
+                required
+              >
                 <option value="">Select…</option>
                 <option value="HODLer">HODLer</option>
                 <option value="Day Trader">Day Trader</option>
@@ -46,7 +59,11 @@ export default function Onboarding() {
 
             <div>
               <label>Preferred Content</label>
-              <select value={contentType} onChange={e=>setContentType(e.target.value)} required>
+              <select
+                value={contentType}
+                onChange={(e) => setContentType(e.target.value)}
+                required
+              >
                 <option value="">Select…</option>
                 <option value="News">Market News</option>
                 <option value="Charts">Charts</option>
@@ -59,21 +76,35 @@ export default function Onboarding() {
           <fieldset>
             <legend>Crypto Assets</legend>
             <div className="checkbox-row">
-              <input type="checkbox" id="btc" onChange={(e)=>toggleAsset("BTC", e.target.checked)} />
+              <input
+                type="checkbox"
+                id="btc"
+                onChange={(e) => toggleAsset("BTC", e.target.checked)}
+              />
               <label htmlFor="btc">BTC</label>
             </div>
             <div className="checkbox-row">
-              <input type="checkbox" id="eth" onChange={(e)=>toggleAsset("ETH", e.target.checked)} />
+              <input
+                type="checkbox"
+                id="eth"
+                onChange={(e) => toggleAsset("ETH", e.target.checked)}
+              />
               <label htmlFor="eth">ETH</label>
             </div>
             <div className="checkbox-row">
-              <input type="checkbox" id="sol" onChange={(e)=>toggleAsset("SOL", e.target.checked)} />
+              <input
+                type="checkbox"
+                id="sol"
+                onChange={(e) => toggleAsset("SOL", e.target.checked)}
+              />
               <label htmlFor="sol">SOL</label>
             </div>
           </fieldset>
 
           {err && <div className="error">{err}</div>}
-          <button className="primary" type="submit">Save Preferences</button>
+          <button className="primary" type="submit">
+            Save Preferences
+          </button>
         </form>
       </div>
     </div>
